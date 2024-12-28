@@ -1,15 +1,39 @@
-
 # TODO
 
-add parentheses buttons
+Clicking on a history item should replace the calculate_result with the history entry
 
-add squareroot button
+Implement Parenthesis buttons
 
 add memory buttons
 
-UI improvements, organize frame and button creation both in init method and in create_buttons method.  Update the visual UI with a theme
+allow paste for partial equation (ex: '8+3/')
 
 clean up methods exponent, mult_div, add_sub and solver.  Maybe use lambdas to avoid repeated code, either add to equation class or create own class.
+
+Add advanced mathematical operations (e.g., square roots, trigonometry).
+
+Implement a dark mode or different themes for the interface.
+
+Store the history of calculations even after the application is closed.
+
+# Bugs
+
+Pressing '=' with nothing in the equation_label results in a ValueError from the calculate_result function
+
+History frame changes size based on entries, which results in too many window size changes overall
+
+
+# Build 009
+
+Greatly streamlined button rendering.
+
+Rearanged frames into; display, basic_functions, basic_operations, and history_frame.  Frames are now either packed or packed by grid, and set according to grid.
+
+History frame is hidden by default, and the option to show it has been moved to a title bar menu.
+
+Exponent title now shows as 'x^y' updated from '^'
+
+Negative number button now shows as '-/+' updated from '-'
 
 # Build 008
 
