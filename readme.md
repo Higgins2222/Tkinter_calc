@@ -27,16 +27,16 @@ cd calculator-app
 
 ## Usage
 
-    Run the script using Python:
-
-    python calculator.py
-
-    The calculator window will appear, and you can begin performing calculations by clicking the buttons or using the keyboard.
+Run the script using Python:
+```
+python tkinter_calc.py
+```
+The calculator window will appear, and you can begin performing calculations by clicking the buttons or using the keyboard.
 
 ## Keyboard Shortcuts
 
-    Ctrl+C: Copy the current equation to the clipboard.
-    Ctrl+V: Paste the equation from the clipboard into the input area.
+Ctrl+C: Copy the current equation to the clipboard.
+Ctrl+V: Paste the equation from the clipboard into the input area.
 
 ## Screenshots
 
