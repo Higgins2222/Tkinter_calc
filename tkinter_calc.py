@@ -1,9 +1,10 @@
 # tkinter_calc.py
 # Author: Higgins
-# Build 08
+# Build 09
 
 import tkinter as tk
 import pyperclip
+import cProfile # For profiling startup
 
 VALID_OPERATIONS = ['*', '/', '+', '-', '**']
 
@@ -90,7 +91,7 @@ def solver(equation):
     return temp[0]
 
 def is_number(s):
-    # This implementation is fine, but could be a regex aa further requirements demand.  Likely undefined behavoir with NaN and infinity
+    # This implementation is fine, but could be a regex as further requirements demand.  Likely undefined behavoir with NaN and infinity
     try:
         float(s)
         return True
@@ -206,21 +207,10 @@ class CalculatorApp:
         self.history_frame_visible = False
 
         # Create Frames for layout management
-        self.main_frame = tk.Frame(self.root)
-        self.main_frame.grid(row=0, column=0, padx=10, pady=10)
-
-        # Ensure the root window rows have proper weight to expand
-        self.root.grid_rowconfigure(0, weight=1)  # Row 0 can expand
-        self.root.grid_rowconfigure(1, weight=3)  # Row 1 (where history_frame is) will get more space
-
-        self.number_buttons_frame = tk.Frame(self.root, width=200, height=200, relief="solid", bg="lightgray")
-        self.number_buttons_frame.grid(row=1, column=0)
-
-        self.history_frame = tk.Frame(self.root, width=200, height=200, relief="solid", bg="lightgray")
-        self.history_frame.grid(row=0, column=1, rowspan=2, sticky='ns')  # Initially hidden
-
-        self.history_label = tk.Label(self.history_frame, text="History will appear here.", bg="lightgray")
-        self.history_label.pack()
+        self.display = tk.Frame(self.root)
+        self.basic_operations = tk.Frame(self.root)
+        self.basic_functions = tk.Frame(self.root)
+        self.history_frame = tk.Frame(self.root, width=225, relief="solid", bg="#AAAAAA")
 
         # Bind keyboard keys
         self.bind_keys()
@@ -249,43 +239,64 @@ class CalculatorApp:
         self.root.bind('<Return>', lambda event: self.calculate_result())  # Enter key for '='
         self.root.bind('.', lambda event: self.point_click())
         self.root.bind('^', lambda event: self.button_exponent())
-        self.root.bind('<Control-c>', lambda event: self.copy_to_clipboard())  # Ctrl+C
-        self.root.bind('<Control-v>', lambda event: self.paste_from_clipboard())  # Ctrl+V
+        self.root.bind('<Control-c>', lambda event: self.copy_to_clipboard())
+        self.root.bind('<Control-v>', lambda event: self.paste_from_clipboard())
 
-    def show_message():
-        print("Show menu option selected")
+    def no_implementation(self):
+        print("Button Clicked")
 
     def create_buttons(self):
+        # Create the Display
+        self.equation_label = tk.Label(self.display, width=45, height=2,borderwidth=3, relief="groove", anchor="sw", padx=5, pady=5)
+        self.equation_label.pack(padx=10, pady=10)
 
-        # Operator buttons
+        # Pack the Display
+        self.display.grid(row=0, column=0)
+
+        # Basic Function
         operators = [
-            ('+', self.button_add, 4, 0),
-            ('-', self.button_subtract, 5, 0),
-            ('*', self.button_multiply, 5, 1),
-            ('/', self.button_divide, 5, 2),
+            ('AC', self.clear_display, 0, 0),
+            ('CE', self.clear_entry, 0, 1),
+            ('...', self.no_implementation, 0, 2),
+            ('...', self.no_implementation, 0, 3)
         ]
         for symbol, command, row, col in operators:
-            tk.Button(self.main_frame, text=symbol, padx=40, pady=20, command=command).grid(row=row, column=col)
+            tk.Button(self.basic_functions, text=symbol, width=10, height=2, command=command).grid(row=row, column=col)
 
-        # Special buttons
-        tk.Button(self.main_frame, text='Clear', padx=79, pady=20, command=self.clear_display).grid(row=4, column=1, columnspan=2)
-        tk.Button(self.main_frame, text='=', padx=91, pady=20, command=self.calculate_result).grid(row=6, column=1, columnspan=2)
-        tk.Button(self.main_frame, text='.', padx=38, pady=20, command=self.point_click).grid(row=7, column=0)
-        tk.Button(self.main_frame, text='^', padx=38, pady=20, command=self.button_exponent).grid(row=7, column=1)
-        tk.Button(self.main_frame, text='-', padx=38, pady=20, command=self.negative_click).grid(row=7, column=2)
-        tk.Button(self.main_frame, text='CE', padx=79, pady=20, command=self.clear_current).grid(row=8, column=1, columnspan=2)
+        # Pack the Basic Functions below the display
+        self.basic_functions.grid(row=1, column=0)
 
-        self.equation_label = tk.Label(self.main_frame, width=35, borderwidth=5)
-        self.equation_label.grid(row=9, column=0, columnspan=3, padx=10, pady=10)
+        # Buttons for basic operations
+        operators = [
+            ('x^y', self.button_exponent, 0, 0),
+            ('(', self.no_implementation, 0, 1),
+            (')', self.no_implementation, 0, 2),
+            ('/', self.button_divide, 0, 3),
+            ('*', self.button_multiply, 1, 3),
+            ('-', self.button_subtract, 2, 3),
+            ('+', self.button_add, 3, 3),
+            ('.', self.point_click, 4, 0),
+            ('-/+', self.negative_click, 4, 1),
+            ('=', self.calculate_result, 4, 3)
+        ]
+        for symbol, command, row, col in operators:
+            tk.Button(self.basic_operations, text=symbol, width=10, height=2, command=command).grid(row=row, column=col)
 
-        # Numeric buttons
+        # Buttons for numeric values
         for i in range(10):
-            button = tk.Button(self.number_buttons_frame, text=str(i), padx=40, pady=20, command=lambda num=i: self.button_click(num))
+            button = tk.Button(self.basic_operations, text=str(i), width=10, height=2, command=lambda num=i: self.button_click(num), bg='#AACCFF')
             row, col = divmod(9 - i, 3)  # Position calculation for numeric keypad layout
+            col = (2 - col)
             button.grid(row=row + 1, column=col)
 
-        tk.Button(self.main_frame, text='history', padx=10, pady=20, command=self.show_history).grid(row=10, column=2)
-        self.history_frame.grid_forget()  # Hide the history frame
+        # Pack the Numeric Buttons and Operations below the Function Buttons
+        self.basic_operations.grid(row=2, column=0)
+
+        # Display the history frame if it is enabled by default
+        if self.history_frame_visible:
+            self.history_frame.grid(row=0, column=1, rowspan=3, sticky='ns')
+            self.history_label = tk.Label(self.history_frame, text="History will appear here.", bg='lightgray')
+            self.history_label.pack()
 
         # Create a menu bar
         menu_bar = tk.Menu(self.root)
@@ -295,11 +306,10 @@ class CalculatorApp:
         menu_bar.add_cascade(label="Show", menu=self.show_menu)
 
         # Add options to the "Show" menu
-        self.show_menu.add_command(label="Option 1", command=self.show_message)
-        self.show_menu.add_command(label="Option 2", command=self.show_message)
+        self.show_menu.add_command(label="Show History", command=self.show_history)
 
         # Configure the root window to use the menu bar
-        root.config(menu=menu_bar)
+        self.root.config(menu=menu_bar)
 
     def update_history_frame(self):
         """Update history frame with text from object instances."""
@@ -307,6 +317,10 @@ class CalculatorApp:
         for widget in self.history_frame.winfo_children():
             widget.destroy()
 
+        # Display a helpful message if history is blank
+        if not self.equation_history:
+            self.history_label = tk.Label(self.history_frame, text="History will appear here.", bg='lightgray')
+            self.history_label.pack()
         # Loop over the history objects and add each to the history frame
         for eq in self.equation_history:
             text = f"{eq.equation} = {eq.solution}"
@@ -315,11 +329,13 @@ class CalculatorApp:
             label.bind("<Button-1>", self.on_history_label_click)  # Bind the click event
 
     def show_history(self):
+        # Hide history if currently visible
         if self.history_frame_visible:
             self.history_frame.grid_forget()  # Hide the history frame
             self.history_frame_visible = False
+        # Hide history if currrently not visible
         else:
-            self.history_frame.grid(row=0, column=1, rowspan=2, sticky="ns")  # Show the history frame
+            self.history_frame.grid(row=0, column=1, rowspan=3, sticky='ns')
             self.history_frame_visible = True
             self.update_history_frame()
 
@@ -328,7 +344,6 @@ class CalculatorApp:
         clicked_label = event.widget  # Get the label that was clicked
         label_text = clicked_label.cget("text")  # Get the text of the label
         print(f"Label clicked: {label_text}")
-        # You can now perform any logic with the clicked label's text
 
     def point_click(self):
         if '.' not in self.current_number:
@@ -336,22 +351,25 @@ class CalculatorApp:
         else:
             # Potentially this could do something, either move the decimal, or place it at the end, for now mirror windows calc and do nothing
             pass
+        # Update display
         self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
 
     def negative_click(self):
+        """Appends a negative to the current_number if positive, else removes negative."""
         if self.current_number[0] == '-':
             self.current_number.pop(0)
         else:
             self.current_number.insert(0, '-')
-
+        # Update display
         self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
 
     def button_click(self, number):
+        """Appends a digit to the display."""
         if self.is_new:
             self.current_number = []
             self.is_new = False
-        """Appends a digit to the display."""
         self.current_number.append(str(number))
+        # Update display
         self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
 
     def clear_display(self):
@@ -360,7 +378,7 @@ class CalculatorApp:
         self.equation_label.config(text=' '.join(self.equation.equation))
         self.current_number = []
 
-    def clear_current(self):
+    def clear_entry(self):
         """Clears the display."""
         self.current_number = []
         self.equation_label.config(text=' '.join(self.equation.equation))
@@ -377,6 +395,8 @@ class CalculatorApp:
             self.equation.replace_opp(symbol)
 
         self.current_number = []
+
+        # Update display
         self.equation_label.config(text=' '.join(self.equation.equation))
 
     def button_add(self):
@@ -425,8 +445,11 @@ class CalculatorApp:
                 pass
             except Exception as e:
                 raise e
-        self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+
         print(f"Pasted from clipboard: {self.clipboard}")  # Debugging log
+
+        # Update display
+        self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
 
     def calculate_result(self):
         """Performs the selected operation and displays the result."""
@@ -437,10 +460,12 @@ class CalculatorApp:
         result = None
         try:
             result = self.equation.get_solution()
+            # Update display
             self.equation_label.config(text=f'{" ".join(self.equation.equation)} = {str(result)}')
         except Exception as e:
             self.equation_label.config(text=f'Error {e}')
 
+        # Reset Equation and operations
         self.current_operation = None
         self.current_number = list(str(result))
         print(self.current_number)
@@ -450,7 +475,11 @@ class CalculatorApp:
         self.update_history_frame()
 
 
+
+# def main():
 if __name__ == "__main__":
     root = tk.Tk()
     app = CalculatorApp(root)
     root.mainloop()
+
+# cProfile.run('main()')
