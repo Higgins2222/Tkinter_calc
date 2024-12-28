@@ -41,3 +41,18 @@ Ctrl+V: Paste the equation from the clipboard into the input area.
 ## Screenshots
 
 TODO: Add Screenshots
+
+## Known Issues
+
+The history panel has inconsistant size.
+Pressing '=' with nothing in the equation_label results in a ValueError from the calculate_result function
+
+## Future Improvements
+
+Add advanced mathematical operations (e.g., square roots, trigonometry).
+Implement a dark mode or different themes for the interface.
+Store the history of calculations even after the application is closed.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
