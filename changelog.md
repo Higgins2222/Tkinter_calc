@@ -1,8 +1,6 @@
 # TODO
 
-Clicking on a history item should replace the calculate_result with the history entry
-
-Implement Parenthesis buttons
+Add advanced mathematical operations (e.g., square roots, trigonometry).
 
 add memory buttons
 
@@ -10,18 +8,51 @@ allow paste for partial equation (ex: '8+3/')
 
 clean up methods exponent, mult_div, add_sub and solver.  Maybe use lambdas to avoid repeated code, either add to equation class or create own class.
 
-Add advanced mathematical operations (e.g., square roots, trigonometry).
-
 Implement a dark mode or different themes for the interface.
 
 Store the history of calculations even after the application is closed.
 
-# Bugs
+ - IN def calculate_result(self):
+ - update equation_history and self.label_to_equation so that we don't have two variables essentially storing the same thing, and so that we use proper keys instead of labels as keys
+
+Currently, the equation object must be reset to a new object once the result is calculated, this is because the append num and opp functions will break if the equation is left in as solved.  Refactor this implementation so a solved equation can be stored correctly and remove 'self.equation = Equation()' from various functions that make this call.
+
+Consider an update_window() function that calls update_history_frame and update_display instead of handeling them seperately
+
+# Build 011
+[12/30/2024]
+
+app.create_buttons() renamed to app.init_UI()
+
+Added result_label for to display just the result in a larger font after compute
+
+Refactored validate_equation(), fixed errors with validating equations containing parenthesis, otherwise functionality unchanged.
+
+Implemented Parenthesis buttons.
+
+Major bug was introduced in version 08 when enclosing solver helper functions into the solver function, parenthesis did not compute correctly, equation has been seperated again.
+
+removed equation.append_term_and_opp()
+
+equation.solution is now stored as a string. equation.has_result has been removed as equation.solution will now return as True even when the solution is zero.
+
+equation.append_opp now raises exceptions
+
+# Known Issues
 
 Pressing '=' with nothing in the equation_label results in a ValueError from the calculate_result function
 
 History frame changes size based on entries, which results in too many window size changes overall
 
+Dividing by 0 raises an exception but the equation is not handled correctly after producing a solution, not updating vars correctly, and resulting in undefined behavoir.
+
+# Build 010
+
+Clicking on a history item will now replace the calculate_result with the history entry, update the equation object of the app class, and update the current number to the result of the equation.
+
+button_add(), button_subtract(), ... have been removed and set_operation() with correct params is now called directly by each button
+
+app.update_display() is now added, reducing redundent code.
 
 # Build 009
 
