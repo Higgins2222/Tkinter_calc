@@ -1,9 +1,10 @@
 # tkinter_calc.py
 # Author: Higgins
-# Build 11
+# Build 12
 
 import tkinter as tk
 import pyperclip
+from math import sqrt
 
 VALID_OPERATIONS = ['*', '/', '+', '-', '**']
 
@@ -222,6 +223,8 @@ class Equation:
         if self.equation:
             if self.equation[-1] in VALID_OPERATIONS:
                 eq = self.equation[0:len(self.equation) - 1]
+        else:
+            return '0'
         if not validate_equation(eq):
             raise InvalidEquationException(eq)
 
@@ -253,31 +256,58 @@ class CalculatorApp:
         # The current equation being typed
         self.equation = Equation()
 
-        # A history of all solved equations
+        # History of all solved equations
         self.equation_history = []
         self.label_to_equation = {}  # Maps labels to equation objects
 
         # Applocal Clipboard
         self.clipboard = None
 
+        # Memory
+        self.memory = '0'
+        self.display_memory = False
+
         # Track history panel visibility
         self.history_frame_visible = False
+        self.memory_frame_visible = False
 
         # Create Frames for layout management
         self.display = tk.Frame(self.root)
+        self.extra_functions = tk.Frame(self.root)
         self.basic_operations = tk.Frame(self.root)
         self.basic_functions = tk.Frame(self.root)
-        self.history_frame = tk.Frame(self.root, width=225, relief="solid", bg="#AAAAAA")
+        self.history_frame = tk.Frame(self.root, width=300, relief="solid", bg="#AAAAAA")
 
         # Bind keyboard keys
         self.bind_keys()
 
         # GUI Buttons
-        # root.after(100, self.init_UI()) # Option to defer startup, to speed up initial window render
         self.init_UI()
+        # Option to defer startup, to speed up initial window render
+        # root.after(100, self.init_UI())
+
+        # Create a menu bar
+        menu_bar = tk.Menu(self.root)
+
+        # Create a "Show" menu
+        self.show_menu = tk.Menu(menu_bar, tearoff=0)  # tearoff=0 removes the dotted line at the top of the menu
+        menu_bar.add_cascade(label="Show", menu=self.show_menu)
+
+        # Add options to the "Show" menu
+        self.show_menu.add_command(label="Show History", command=self.show_history)
+        self.show_menu.add_command(label="Show Memory Buttons", command=self.show_memory_frame)
+
+        # Configure the root window to use the menu bar
+        self.root.config(menu=menu_bar)
 
         # Allow for operations on exit
         self.root.protocol("WM_DELETE_WINDOW", self.on_exit)
+
+    def get_next_key(self):
+        key = 0
+        while True:
+            yield key
+            key += 1
 
     def on_exit(self):
         for eq in self.equation_history:
@@ -303,26 +333,49 @@ class CalculatorApp:
         print("Button Clicked")
 
     def init_UI(self):
+        # Current Render Row
+        crow = 0
         # Create the Display
         self.equation_label = tk.Label(self.display, width=45, height=1,borderwidth=3, relief="groove", anchor="sw", padx=5, pady=5)
         self.result_label = tk.Label(self.display, width=18, height=1,borderwidth=3, relief="groove", anchor="se", padx=5, pady=5, font=("Courier", 25, 'bold') )
         self.equation_label.pack(padx=5, pady=0)
         self.result_label.pack(padx=5, pady=5)
         # Pack the Display
-        self.display.grid(row=0, column=0)
+        self.display.grid(row=crow, column=0)
+        crow += 1
+
+        # Extra Functions
+        operators = [
+            ('MC', self.memory_clear, 0, 0),
+            ('MR', self.memory_recall, 0, 2),
+            ('MS', self.memory_set, 0, 1),
+            ('M+', self.memory_add, 0, 3),
+            ('M-', self.memory_sub, 0, 4)
+        ]
+
+        for symbol, command, row, col in operators:
+            tk.Button(self.extra_functions, text=symbol, width=7, height=1, command=command).grid(row=row, column=col)
+
+        self.extra_func_row = crow
+        self.extra_functions.grid(row=self.extra_func_row, column=0)
+        crow += 1
+
+        if not self.memory_frame_visible:
+            self.extra_functions.grid_forget()  # Hide the memory frame
 
         # Basic Function
         operators = [
             ('AC', self.clear_display, 0, 0),
             ('CE', self.clear_entry, 0, 1),
-            ('...', self.no_implementation, 0, 2),
-            ('...', self.no_implementation, 0, 3)
+            ('Sqrt(x)', self.sqrt_click, 0, 2),
+            ('.00', self.percent_click, 0, 3)
         ]
         for symbol, command, row, col in operators:
             tk.Button(self.basic_functions, text=symbol, width=10, height=2, command=command).grid(row=row, column=col)
 
         # Pack the Basic Functions below the display
-        self.basic_functions.grid(row=1, column=0)
+        self.basic_functions.grid(row=crow, column=0)
+        crow += 1
 
         # Buttons for basic operations
         operators = [
@@ -348,64 +401,73 @@ class CalculatorApp:
             button.grid(row=row + 1, column=col)
 
         # Pack the Numeric Buttons and Operations below the Function Buttons
-        self.basic_operations.grid(row=2, column=0)
+        self.basic_operations.grid(row=crow, column=0)
+        crow += 1
 
         # Display the history frame if it is enabled by default
         if self.history_frame_visible:
-            self.history_frame.grid(row=0, column=1, rowspan=3, sticky='ns')
+            self.history_frame.grid(row=0, column=1, rowspan=4, sticky='ns')
             self.history_label = tk.Label(self.history_frame, text="History will appear here.", bg='lightgray')
             self.history_label.pack()
 
-        # Create a menu bar
-        menu_bar = tk.Menu(self.root)
+        self.update_display()
 
-        # Create a "Show" menu
-        self.show_menu = tk.Menu(menu_bar, tearoff=0)  # tearoff=0 removes the dotted line at the top of the menu
-        menu_bar.add_cascade(label="Show", menu=self.show_menu)
-
-        # Add options to the "Show" menu
-        self.show_menu.add_command(label="Show History", command=self.show_history)
-
-        # Configure the root window to use the menu bar
-        self.root.config(menu=menu_bar)
-
-    def get_next_key(self):
-        key = 0
-        while True:
-            yield key
-            key += 1
+    def show_memory_frame(self):
+        # Hide memory buttons if currently visible
+        if self.memory_frame_visible:
+            self.extra_functions.grid_forget()  # Hide the memory frame
+            self.memory_frame_visible = False
+        # Show memory buttons if currrently not visible
+        else:
+            self.extra_functions.grid(row=self.extra_func_row, column=0)
+            self.memory_frame_visible = True
 
     def update_history_frame(self):
         """Update history frame with text from object instances."""
         # Clear previous history items before updating
+        HISTORY_LABEL_WIDTH = 40
         for widget in self.history_frame.winfo_children():
             widget.destroy()
 
         # Display a helpful message if history is blank
         if not self.equation_history:
-            self.history_label = tk.Label(self.history_frame, text="History will appear here.", bg='lightgray')
+            self.history_label = tk.Label(self.history_frame, width=HISTORY_LABEL_WIDTH, text="History will appear here.", bg='lightgray')
             self.history_label.pack()
         # Loop over the history objects and add each to the history frame
         for eq in self.equation_history:
             text = f"{eq.equation} = {eq.solution}"
-            label = tk.Label(self.history_frame, text=text, bg="lightgray")
+            label = tk.Label(self.history_frame, width=HISTORY_LABEL_WIDTH, text=text, bg="lightgray")
             label.pack(fill=tk.X, pady=2)  # Adjust padding for spacing
             label.bind("<Button-1>", self.on_history_label_click)  # Bind the click event
             self.label_to_equation[label] = eq
+
+    def memory_recall(self):
+        self.current_number = list(self.memory)
+
+        # Remove '.0' from the end of the number if it contains .0
+        if len(self.current_number) >= 3:
+            if ''.join(self.current_number).endswith('.0'):
+                self.current_number = self.current_number[:-2]
+
+        self.update_display()
 
     def update_display(self):
         result = 0
         # Update display, display the result if the current equation is solveable
         print(f'update_display {self.current_number=}')
-        print(f'{self.equation.equation=}')
-        try:
-            result = self.equation.get_solution()
-            self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
-            self.result_label.config(text=f'{result}')
-        except InvalidEquationException:
-            self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
-        except:
-            raise
+        print(f'update_display {self.equation.equation=}')
+        if self.display_memory:
+            self.equation_label.config(text=f'mem: {"".join(self.memory)}:: {" ".join(self.equation.equation)}')
+        else:
+            self.equation_label.config(text=f'{" ".join(self.equation.equation)}')
+        if self.current_number:
+            # Remove '.0' from the end of the number if it contains .0
+            if len(self.current_number) >= 3:
+                if ''.join(self.current_number).endswith('.0'):
+                    self.current_number = self.current_number[:-2]
+            self.result_label.config(text=f'{"".join(self.current_number)}')
+        else:
+            self.result_label.config(text=f'0')
 
     def show_history(self):
         # Hide history if currently visible
@@ -414,7 +476,7 @@ class CalculatorApp:
             self.history_frame_visible = False
         # Show history if currrently not visible
         else:
-            self.history_frame.grid(row=0, column=1, rowspan=3, sticky='ns')
+            self.history_frame.grid(row=0, column=1, rowspan=4, sticky='ns')
             self.history_frame_visible = True
             self.update_history_frame()
 
@@ -435,6 +497,16 @@ class CalculatorApp:
         self.update_display()
         self.equation = Equation()
 
+    def button_click(self, number):
+        """Appends a digit to the display."""
+        if self.is_new:
+            self.current_number = []
+            self.is_new = False
+        self.current_number.append(str(number))
+        print(f'button_click {self.current_number=}')
+
+        self.update_display()
+
     def point_click(self):
         if '.' not in self.current_number:
             self.current_number.append('.')
@@ -442,6 +514,27 @@ class CalculatorApp:
             # Potentially this could do something, either move the decimal, or place it at the end, for now mirror windows calc and do nothing
             pass
 
+        self.update_display()
+
+    def percent_click(self):
+        if is_number(''.join(self.current_number)):
+            num = float(''.join(self.current_number))
+            num *= 0.01
+            self.current_number = list(str(num))
+        else:
+            # Set current_number to zero with a decimal point, or do nothing, for now mimic behavoir of windows calculator and do nothing.
+            #self.current_number = '0.'
+            pass
+
+        self.update_display()
+
+    def sqrt_click(self):
+        print(f'sqrt_click called {self.current_number=}')
+        if is_number(''.join(self.current_number)):
+            num = float(''.join(self.current_number))
+            num = sqrt(num)
+            self.current_number = list(str(num))
+            self.is_new = True
         self.update_display()
 
     def negative_click(self):
@@ -453,26 +546,21 @@ class CalculatorApp:
 
         self.update_display()
 
-    def button_click(self, number):
-        """Appends a digit to the display."""
-        if self.is_new:
-            self.current_number = []
-            self.is_new = False
-        self.current_number.append(str(number))
-        print(f'button_click {self.current_number=}')
-
-        self.update_display()
 
     def clear_display(self):
         """Clears the display."""
         self.equation.clear()
-        self.equation_label.config(text=' '.join(self.equation.equation))
+        # self.equation_label.config(text=' '.join(self.equation.equation))
         self.current_number = []
+
+        self.update_display()
 
     def clear_entry(self):
         """Clears the display."""
         self.current_number = []
-        self.equation_label.config(text=' '.join(self.equation.equation))
+        # self.equation_label.config(text=' '.join(self.equation.equation))
+
+        self.update_display()
 
     def set_operation(self, symbol, operation):
         """Sets the current operation and stores the first number."""
@@ -481,8 +569,7 @@ class CalculatorApp:
         # if an operation is entered and there is no number to record, replace the last operation with the new one
         print(f'set_operation() {self.current_number=}')
         if is_number("".join(self.current_number)):
-            num = float("".join(self.current_number))
-            self.equation.append_term(str(num))
+            self.equation.append_term("".join(self.current_number))
             self.equation.append_opp(symbol)
         else:
             self.equation.append_opp(symbol)
@@ -492,15 +579,45 @@ class CalculatorApp:
 
         self.update_display()
 
+    def memory_add(self):
+        result = float(self.memory)
+        result += float(''.join(self.current_number))
+        self.memory = str(result)
+        self.display_memory = True
+
+        self.update_display()
+
+    def memory_sub(self):
+        result = float(self.memory)
+        result -= float(''.join(self.current_number))
+        self.memory = str(result)
+        self.display_memory = True
+
+        self.update_display()
+
+    def memory_set(self):
+        self.memory = ''.join(self.current_number)
+        self.display_memory = True
+
+        self.update_display()
+
+    def memory_clear(self):
+        self.memory = '0'
+        self.display_memory = False
+
+        self.update_display()
+
     def copy_to_clipboard(self):
         """Copies data to the clipboard."""
-        if len(self.equation.equation) >= 1:  # If an equation exists
-            if self.equation.solution:
-                self.clipboard = ''.join(self.equation.solution)
-            else:  # Otherwise, copy the entire equation
-                self.clipboard = self.equation.equation
-        else:
-            self.clipboard = ''.join(self.current_number)
+        # if len(self.equation.equation) >= 1:  # If an equation exists
+        #     if self.equation.solution:
+        #         self.clipboard = ''.join(self.equation.solution)
+        #     else:  # Otherwise, copy the entire equation
+        #         self.clipboard = self.equation.equation
+        # else:
+        #     self.clipboard = ''.join(self.current_number)
+        self.clipboard = ''.join(self.current_number)
+
         pyperclip.copy(self.clipboard)
         print(f"Copied to clipboard: {self.clipboard}")  # Debugging log
 
@@ -511,16 +628,19 @@ class CalculatorApp:
         # only support pasting number from windows clipboard, not equation as list for now
         if is_number(clipboard_content):
             self.clipboard = clipboard_content
+            self.current_number = list(self.clipboard)
 
-        if isinstance(self.clipboard, list):  # Clipboard has an equation
-            self.equation.set_equation_from_list(self.clipboard)
-        elif isinstance(self.clipboard, str):  # Clipboard has a number
-            try:
-                self.current_number = list(self.clipboard)
-            except InvalidEquationException:
-                pass
-            except Exception:
-                raise
+        # if isinstance(self.clipboard, list):  # Clipboard has an equation
+        #     self.equation.set_equation_from_list(self.clipboard)
+        # if isinstance(self.clipboard, str):  # Clipboard has a number
+        #     try:
+
+        #     except InvalidEquationException:
+        #         pass
+        #     except Exception:
+        #         raise
+
+        self.update_display()
 
         print(f"Pasted from clipboard: {self.clipboard}")  # Debugging log
 
@@ -537,13 +657,16 @@ class CalculatorApp:
         result = None
         try:
             result = self.equation.get_solution()
+            self.equation_history.append(self.equation)
+            self.update_history_frame()
+        except ZeroDivisionError as e:
+            self.equation_label.config(text=f'Error {e}')
+            self.equation.clear()
         except Exception as e:
             self.equation_label.config(text=f'Error {e}')
+            self.equation.clear()
             print(e)
             raise
-
-        self.equation_history.append(self.equation)
-        self.update_history_frame()
 
         # Reset Equation and operations
         self.current_operation = None
