@@ -1,73 +1,72 @@
 # tkinter_calc.py
 # Author: Higgins
-# Build 09
+# Build 11
 
 import tkinter as tk
 import pyperclip
-import cProfile # For profiling startup
 
 VALID_OPERATIONS = ['*', '/', '+', '-', '**']
 
+def exponent(equation):
+    temp = []
+
+    while equation:
+        token = equation.pop(0)
+
+        if token == '**':
+            left = temp.pop()
+            right = equation.pop(0)
+            result = left ** right
+            temp.append(result)
+        else:
+            temp.append(token)
+
+    return temp
+
+def mult_div(equation):
+    temp = []
+
+    while equation:
+        token = equation.pop(0)
+
+        if token == '*':
+            left = temp.pop()
+            right = equation.pop(0)
+            result = left * right
+            temp.append(result)
+        elif token == '/':
+            left = temp.pop()
+            right = equation.pop(0)
+            result = left / right
+            temp.append(result)
+        else:
+            temp.append(token)
+
+    return temp
+
+
+def add_sub(equation):
+    temp = []
+
+    while equation:
+        token = equation.pop(0)
+
+        if token == '+':
+            left = temp.pop()
+            right = equation.pop(0)
+            result = left + right
+            temp.append(result)
+        elif token == '-':
+            left = temp.pop()
+            right = equation.pop(0)
+            result = left - right
+            temp.append(result)
+        else:
+            temp.append(token)
+
+    return temp
+
 def solver(equation):
-    def exponent(equation):
-        result = []
-
-        while equation:
-            token = equation.pop(0)
-
-            if token == '**':
-                left = temp.pop()
-                right = equation.pop(0)
-                solution = left ** right
-                result.append(solution)
-            else:
-                result.append(token)
-
-        return result
-    def mult_div(equation):
-        temp = []
-
-        while equation:
-            token = equation.pop(0)
-
-            if token == '*':
-                left = temp.pop()
-                right = equation.pop(0)
-                result = left * right
-                temp.append(result)
-            elif token == '/':
-                left = temp.pop()
-                right = equation.pop(0)
-                if right == 0:
-                        raise ValueError("Division by zero")
-                result = left / right
-                temp.append(result)
-            else:
-                temp.append(token)
-
-        return temp
-    def add_sub(equation):
-        temp = []
-
-        while equation:
-            token = equation.pop(0)
-
-            if token == '+':
-                left = temp.pop()
-                right = equation.pop(0)
-                result = left + right
-                temp.append(result)
-            elif token == '-':
-                left = temp.pop()
-                right = equation.pop(0)
-                result = left - right
-                temp.append(result)
-            else:
-                temp.append(token)
-
-        return temp
-
-    equation = equation.copy()
     temp = []
 
     while equation:
@@ -97,38 +96,53 @@ def is_number(s):
         return True
     except ValueError:
         return False
-    except Exception as e:
-        raise e
+    except TypeError:
+        return False
+    except Exception:
+        raise
 
 def validate_equation(equation: list):
     print('validating', equation)
+    if not equation:
+        return False
 
-    #first char should either be: float, int, or '('
-    open_paren = 0
-    has_num = False
-    is_valid = True
+    open_paren = 0 # Nested level of parenthesis
+    need_num = True # Weither we need the next term to be a number
+    is_valid = True # False while our equation is invalid
+
     for term in equation:
-        # open parenthesis are only valid when expecting a number
-        if not has_num and term == '(':
-            open_paren += 1
-        # if has_num is False, we need the next term to be an int or float
-        elif not has_num:
-            has_num = is_number(term)
-            # needed a number, is not number, this equation is not valid
-            if not has_num:
-                is_valid = False
-        # we can only close paren after recording an int or float
-        elif has_num and term == ')':
-            open_paren -= 1
-            has_num = False
-        elif has_num and term in VALID_OPERATIONS:
-            has_num = False
-        else:
-            is_valid = False
+        print(term)
 
-    # check we have an equal amount of open and close parens
+        if need_num:
+            if term == '(':
+                open_paren += 1
+            elif is_number(term):
+                need_num = False
+            else:
+                is_valid = False
+                break
+        else:
+            if term == ')':
+                open_paren -= 1
+                # Check if we have a ')' but no matching '(' preceding it
+                if open_paren < 0:
+                    is_valid = False
+                    break
+                need_num = False
+            elif term in VALID_OPERATIONS:
+                need_num = True
+            else:
+                is_valid = False
+                break
+    # Equation likely ends with an operation, invalid
+    if need_num:
+        is_valid = False
+
+    # Valid only when there are matching pairs of parenthesis
     if open_paren != 0:
         is_valid = False
+
+    print(f'{is_valid=}')
 
     return is_valid
 
@@ -138,46 +152,88 @@ class InvalidEquationException(Exception):
         self.message = message
         super().__init__(f"{message}: {equation}")
 
+class ParenthesisBeforeOperationException(Exception):
+    def __init__(self, equation, message="Invalid equation format or structure"):
+        self.equation = equation
+        self.message = message
+        super().__init__(f"{message}: {equation}")
+
+class UnknownOperationException(Exception):
+    def __init__(self, operation, message="Unknown operation"):
+        self.operation = operation
+        self.message = message
+        super().__init__(f"{message}: {operation}")
+
 class Equation:
     def __init__(self):
         self.equation = []
-        self.has_result = False
-        self.solution = None
+        self.solution = ''
 
-    def append_term_and_opp(self, num, operation):
-        # todo: if num.isdigit():
-        self.equation.append(str(num))
-        # todo: if operation in list_of_opps:
-        self.equation.append(operation)
-        #print(equation)
+    # def append_opp(self, operation):
+    #     self.equation.append(operation)
 
     def append_term(self, num):
         # note: this will commonly be called as '=' is pressed
         # todo: if num.isdigit():
         # todo: if equation[-1] in list_of_opps
-        self.equation.append(str(num))
+        if is_number(num):
+            self.equation.append(str(num))
+        else:
+            raise TypeError # or ValueError?
 
-    def replace_opp(self, operation):
-        self.equation.pop()
-        self.equation.append(operation)\
+    def append_opp(self, operation):
+        if self.equation:
+            if is_number(self.equation[-1]):
+                if operation in VALID_OPERATIONS:
+                    self.equation.append(operation)
+                elif operation == ')':
+                    self.equation.append(operation)
+                elif operation == '(':
+                    raise ParenthesisBeforeOperationException(self.equation)
+                elif operation in VALID_OPERATIONS:
+                    self.equation.append(operation)
+                else:
+                    raise UnknownOperationException(operation)
+            elif self.equation[-1] in VALID_OPERATIONS:
+                if operation == '(':
+                    self.equation.append(operation)
+                else:
+                    self.equation.pop()
+                    self.equation.append(operation)
+            elif self.equation[-1] == '(':
+                if operation == '(':
+                    self.equation.append(operation)
+                else:
+                    self.equation.pop()
+                    self.equation.append(operation)
+            elif self.equation[-1] == ')':
+                self.equation.append(operation)
+            else:
+                raise UnknownOperationException(operation)
+        elif operation == '(':
+            self.equation.append(operation)
 
     def clear(self):
         self.equation = []
 
     def get_solution(self):
         print(self.equation)
-        if not validate_equation(self.equation):
-            raise InvalidEquationException(self.equation)
-        
-        equation_int = [float(x) if is_number(x) else x for x in self.equation]
-        self.solution = solver(equation_int)
-        self.has_result = True
+        eq = self.equation
+        if self.equation:
+            if self.equation[-1] in VALID_OPERATIONS:
+                eq = self.equation[0:len(self.equation) - 1]
+        if not validate_equation(eq):
+            raise InvalidEquationException(eq)
+
+        equation_int = [float(x) if is_number(x) else x for x in eq]
+        print(f'GET SOLUTION {equation_int=}')
+        self.solution = str(solver(equation_int))
         return self.solution
 
     def set_equation_from_list(self, li):
         if not validate_equation(self.equation):
             raise InvalidEquationException(self.equation)
-        
+
         self.equation = li
 
 
@@ -186,7 +242,7 @@ class CalculatorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Simple Calculator")
-        
+
         # Current number being input, or the result of the last equation
         self.current_number = []
 
@@ -199,6 +255,7 @@ class CalculatorApp:
 
         # A history of all solved equations
         self.equation_history = []
+        self.label_to_equation = {}  # Maps labels to equation objects
 
         # Applocal Clipboard
         self.clipboard = None
@@ -216,8 +273,8 @@ class CalculatorApp:
         self.bind_keys()
 
         # GUI Buttons
-        # root.after(100, self.create_buttons()) # Option to defer startup, to speed up initial window render
-        self.create_buttons()
+        # root.after(100, self.init_UI()) # Option to defer startup, to speed up initial window render
+        self.init_UI()
 
         # Allow for operations on exit
         self.root.protocol("WM_DELETE_WINDOW", self.on_exit)
@@ -231,25 +288,26 @@ class CalculatorApp:
         """Binds keyboard keys to their corresponding functions."""
         for i in range(10):
             self.root.bind(str(i), lambda event, num=i: self.button_click(num))
-        self.root.bind('+', lambda event: self.button_add())
-        self.root.bind('-', lambda event: self.button_subtract())
-        self.root.bind('*', lambda event: self.button_multiply())
-        self.root.bind('/', lambda event: self.button_divide())
+        self.root.bind('+', lambda event: self.set_operation('+', 'addition'))
+        self.root.bind('-', lambda event: self.set_operation('-', 'subtraction'))
+        self.root.bind('*', lambda event: self.set_operation('*', 'multiplication'))
+        self.root.bind('/', lambda event: self.set_operation('/', 'division'))
         self.root.bind('c', lambda event: self.clear_display())  # Clear with 'c'
         self.root.bind('<Return>', lambda event: self.calculate_result())  # Enter key for '='
-        self.root.bind('.', lambda event: self.point_click())
-        self.root.bind('^', lambda event: self.button_exponent())
+        self.root.bind('.', lambda event: self.point_clcik())
+        self.root.bind('^', lambda event: self.set_operation('**', 'exponent'))
         self.root.bind('<Control-c>', lambda event: self.copy_to_clipboard())
         self.root.bind('<Control-v>', lambda event: self.paste_from_clipboard())
 
     def no_implementation(self):
         print("Button Clicked")
 
-    def create_buttons(self):
+    def init_UI(self):
         # Create the Display
-        self.equation_label = tk.Label(self.display, width=45, height=2,borderwidth=3, relief="groove", anchor="sw", padx=5, pady=5)
-        self.equation_label.pack(padx=10, pady=10)
-
+        self.equation_label = tk.Label(self.display, width=45, height=1,borderwidth=3, relief="groove", anchor="sw", padx=5, pady=5)
+        self.result_label = tk.Label(self.display, width=18, height=1,borderwidth=3, relief="groove", anchor="se", padx=5, pady=5, font=("Courier", 25, 'bold') )
+        self.equation_label.pack(padx=5, pady=0)
+        self.result_label.pack(padx=5, pady=5)
         # Pack the Display
         self.display.grid(row=0, column=0)
 
@@ -268,13 +326,13 @@ class CalculatorApp:
 
         # Buttons for basic operations
         operators = [
-            ('x^y', self.button_exponent, 0, 0),
-            ('(', self.no_implementation, 0, 1),
-            (')', self.no_implementation, 0, 2),
-            ('/', self.button_divide, 0, 3),
-            ('*', self.button_multiply, 1, 3),
-            ('-', self.button_subtract, 2, 3),
-            ('+', self.button_add, 3, 3),
+            ('x^y', lambda: self.set_operation('**', 'exponent'), 0, 0),
+            ('(', lambda: self.set_operation('(', 'paren_open'), 0, 1),
+            (')', lambda: self.set_operation(')', 'paren_close'), 0, 2),
+            ('/', lambda: self.set_operation('/', 'division'), 0, 3),
+            ('*', lambda: self.set_operation('*', 'multiplication'), 1, 3),
+            ('-', lambda: self.set_operation('-', 'subtraction'), 2, 3),
+            ('+', lambda: self.set_operation('+', 'addition'), 3, 3),
             ('.', self.point_click, 4, 0),
             ('-/+', self.negative_click, 4, 1),
             ('=', self.calculate_result, 4, 3)
@@ -311,6 +369,12 @@ class CalculatorApp:
         # Configure the root window to use the menu bar
         self.root.config(menu=menu_bar)
 
+    def get_next_key(self):
+        key = 0
+        while True:
+            yield key
+            key += 1
+
     def update_history_frame(self):
         """Update history frame with text from object instances."""
         # Clear previous history items before updating
@@ -327,13 +391,28 @@ class CalculatorApp:
             label = tk.Label(self.history_frame, text=text, bg="lightgray")
             label.pack(fill=tk.X, pady=2)  # Adjust padding for spacing
             label.bind("<Button-1>", self.on_history_label_click)  # Bind the click event
+            self.label_to_equation[label] = eq
+
+    def update_display(self):
+        result = 0
+        # Update display, display the result if the current equation is solveable
+        print(f'update_display {self.current_number=}')
+        print(f'{self.equation.equation=}')
+        try:
+            result = self.equation.get_solution()
+            self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+            self.result_label.config(text=f'{result}')
+        except InvalidEquationException:
+            self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+        except:
+            raise
 
     def show_history(self):
         # Hide history if currently visible
         if self.history_frame_visible:
             self.history_frame.grid_forget()  # Hide the history frame
             self.history_frame_visible = False
-        # Hide history if currrently not visible
+        # Show history if currrently not visible
         else:
             self.history_frame.grid(row=0, column=1, rowspan=3, sticky='ns')
             self.history_frame_visible = True
@@ -343,7 +422,18 @@ class CalculatorApp:
         """Callback function for label click."""
         clicked_label = event.widget  # Get the label that was clicked
         label_text = clicked_label.cget("text")  # Get the text of the label
-        print(f"Label clicked: {label_text}")
+        equation_obj = self.label_to_equation.get(clicked_label)  # Retrieve the equation object
+        if equation_obj:
+            print(f"Clicked equation: {equation_obj.equation} = {equation_obj.solution}")
+
+        # Set Equation and Reset operations
+        self.equation = equation_obj
+        self.current_number = list(str(self.equation.get_solution()))
+        self.current_operation = None
+        self.is_new = True
+
+        self.update_display()
+        self.equation = Equation()
 
     def point_click(self):
         if '.' not in self.current_number:
@@ -351,8 +441,8 @@ class CalculatorApp:
         else:
             # Potentially this could do something, either move the decimal, or place it at the end, for now mirror windows calc and do nothing
             pass
-        # Update display
-        self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+
+        self.update_display()
 
     def negative_click(self):
         """Appends a negative to the current_number if positive, else removes negative."""
@@ -360,8 +450,8 @@ class CalculatorApp:
             self.current_number.pop(0)
         else:
             self.current_number.insert(0, '-')
-        # Update display
-        self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+
+        self.update_display()
 
     def button_click(self, number):
         """Appends a digit to the display."""
@@ -369,8 +459,9 @@ class CalculatorApp:
             self.current_number = []
             self.is_new = False
         self.current_number.append(str(number))
-        # Update display
-        self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+        print(f'button_click {self.current_number=}')
+
+        self.update_display()
 
     def clear_display(self):
         """Clears the display."""
@@ -388,38 +479,23 @@ class CalculatorApp:
         # The operation variable is not currently used, but may be useful later to keep track of the names of more complex opperations where the symbol could be obscure or ambiguous
 
         # if an operation is entered and there is no number to record, replace the last operation with the new one
+        print(f'set_operation() {self.current_number=}')
         if is_number("".join(self.current_number)):
             num = float("".join(self.current_number))
-            self.equation.append_term_and_opp(num, symbol)
+            self.equation.append_term(str(num))
+            self.equation.append_opp(symbol)
         else:
-            self.equation.replace_opp(symbol)
+            self.equation.append_opp(symbol)
 
         self.current_number = []
+        print(f'set_operation() {self.equation.equation}')
 
-        # Update display
-        self.equation_label.config(text=' '.join(self.equation.equation))
-
-    def button_add(self):
-        self.set_operation('+', 'addition')
-
-    def button_subtract(self):
-        self.set_operation('-', 'subtraction')
-
-    def button_multiply(self):
-        self.set_operation('*', 'multiplication')
-
-    def button_divide(self):
-        self.set_operation('/', 'division')
-
-    def button_exponent(self):
-        self.set_operation('**', 'exponent')
-        #self.current_number.append('**')
-        #self.equation_label.config(text=f'{" ".join(self.equation.equation)} {"".join(self.current_number)}')
+        self.update_display()
 
     def copy_to_clipboard(self):
         """Copies data to the clipboard."""
         if len(self.equation.equation) >= 1:  # If an equation exists
-            if self.equation.has_result:
+            if self.equation.solution:
                 self.clipboard = ''.join(self.equation.solution)
             else:  # Otherwise, copy the entire equation
                 self.clipboard = self.equation.equation
@@ -443,8 +519,8 @@ class CalculatorApp:
                 self.current_number = list(self.clipboard)
             except InvalidEquationException:
                 pass
-            except Exception as e:
-                raise e
+            except Exception:
+                raise
 
         print(f"Pasted from clipboard: {self.clipboard}")  # Debugging log
 
@@ -453,33 +529,38 @@ class CalculatorApp:
 
     def calculate_result(self):
         """Performs the selected operation and displays the result."""
-        print(self.current_number)
-        num = float("".join(self.current_number))
-        self.equation.append_term(str(num))
+        print(f'calculate_result() {self.current_number=}')
+
+        if is_number("".join(self.current_number)):
+            self.equation.append_term("".join(self.current_number))
 
         result = None
         try:
             result = self.equation.get_solution()
-            # Update display
-            self.equation_label.config(text=f'{" ".join(self.equation.equation)} = {str(result)}')
         except Exception as e:
             self.equation_label.config(text=f'Error {e}')
+            print(e)
+            raise
+
+        self.equation_history.append(self.equation)
+        self.update_history_frame()
 
         # Reset Equation and operations
         self.current_operation = None
-        self.current_number = list(str(result))
-        print(self.current_number)
-        self.equation_history.append(self.equation)
+        self.current_number = list(result)
+
+        self.update_display()
+
+        # Todo: update equation_history and self.label_to_equation so that we don't have two variables essentially storing the same thing, and so that we use proper keys instead of labels as keys
+        # key = self.get_next_key()
+        # self.label_to_equation.append([key, text, label, self.equation])
+
         self.equation = Equation()
         self.is_new = True
-        self.update_history_frame()
 
 
-
-# def main():
 if __name__ == "__main__":
     root = tk.Tk()
     app = CalculatorApp(root)
     root.mainloop()
 
-# cProfile.run('main()')
