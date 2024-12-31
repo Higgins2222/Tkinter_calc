@@ -1,10 +1,8 @@
 # TODO
 
-Add advanced mathematical operations (e.g., square roots, trigonometry).
+Add advanced mathematical operations (trigonometry, n!, 1/x)
 
-add memory buttons
-
-allow paste for partial equation (ex: '8+3/')
+Allow copy/paste of equations.
 
 clean up methods exponent, mult_div, add_sub and solver.  Maybe use lambdas to avoid repeated code, either add to equation class or create own class.
 
@@ -18,6 +16,32 @@ Store the history of calculations even after the application is closed.
 Currently, the equation object must be reset to a new object once the result is calculated, this is because the append num and opp functions will break if the equation is left in as solved.  Refactor this implementation so a solved equation can be stored correctly and remove 'self.equation = Equation()' from various functions that make this call.
 
 Consider an update_window() function that calls update_history_frame and update_display instead of handeling them seperately
+
+Add command line call that accepts an equation
+
+# Build 012
+
+Memory Buttons (MC, MR, MS, M+, M-) have been added.
+
+Memory shows up in the equation display if it is being used.
+
+Menu option added to show/hide memory buttons.
+
+app.current_number is no longer being converted to float then back to string before being stored when an operation is being input
+
+Clipboard now copy and pastes the current number only, there is no copy/pasting of equations currently.
+
+All known issues have been resolved.
+
+'Pressing '=' with nothing in the equation_label results in a ValueError from the calculate_result function', is now fixed
+
+'History frame changes size based on entries, which results in too many window size changes overall', is now fixed, width is set within labels in update_history_frame
+
+'Dividing by 0 raises an exception but the equation is not handled correctly after producing a solution, not updating vars correctly, and resulting in undefined behavoir.' ZeroDivisionError is now caught in calculate_result and the equation is reset.
+
+# Known Issues
+
+None, as of build 12.
 
 # Build 011
 [12/30/2024]
@@ -37,14 +61,6 @@ removed equation.append_term_and_opp()
 equation.solution is now stored as a string. equation.has_result has been removed as equation.solution will now return as True even when the solution is zero.
 
 equation.append_opp now raises exceptions
-
-# Known Issues
-
-Pressing '=' with nothing in the equation_label results in a ValueError from the calculate_result function
-
-History frame changes size based on entries, which results in too many window size changes overall
-
-Dividing by 0 raises an exception but the equation is not handled correctly after producing a solution, not updating vars correctly, and resulting in undefined behavoir.
 
 # Build 010
 
